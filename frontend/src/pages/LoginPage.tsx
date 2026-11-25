@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext';
+import { PasswordInput } from '../components/auth/PasswordInput';
 import { Footer } from '../components/layout/Footer';
 import { Header } from '../components/layout/Header';
 
@@ -64,15 +65,13 @@ export function LoginPage() {
               <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-slate-300">
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 minLength={8}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white outline-none transition-colors focus:border-indigo-500"
                 placeholder="Your password"
               />
             </div>

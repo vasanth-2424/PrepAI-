@@ -28,20 +28,12 @@ export function Header() {
 
         <nav className="flex items-center gap-3 text-sm sm:gap-4">
           {activePage === 'landing' ? (
-            <>
-              <a
-                href="#features"
-                className="hidden text-slate-400 transition-colors hover:text-white sm:inline"
-              >
-                Features
-              </a>
-              <a
-                href="#status"
-                className="hidden text-slate-400 transition-colors hover:text-white sm:inline"
-              >
-                Status
-              </a>
-            </>
+            <a
+              href="#features"
+              className="hidden text-slate-400 transition-colors hover:text-white sm:inline"
+            >
+              Features
+            </a>
           ) : null}
 
           <Link

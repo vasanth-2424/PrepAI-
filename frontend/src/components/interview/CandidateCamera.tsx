@@ -12,38 +12,104 @@ export function CandidateCamera({
   elapsedSeconds,
 }: CandidateCameraProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
+    let isCancelled = false;
 
     async function setupCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (!isCancelled) {
+          setHasCameraPermission(false);
+          setCameraError('Camera is not supported in this browser. Interview continues in text/voice mode.');
+        }
+        return;
+      }
+
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false, // Audio handled by Web Speech API
         });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+
+        if (isCancelled) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          return;
         }
+
+        streamRef.current = mediaStream;
+        setStream(mediaStream);
         setHasCameraPermission(true);
         setCameraError(null);
       } catch (err) {
+        if (isCancelled) {
+          return;
+        }
+
         console.warn('Webcam permission denied or unavailable:', err);
+        setStream(null);
         setHasCameraPermission(false);
-        setCameraError('Webcam unavailable. Interview continues in text/voice mode.');
+
+        if (err instanceof DOMException && err.name === 'NotAllowedError') {
+          setCameraError('Camera permission was denied. Interview continues in text/voice mode.');
+        } else if (err instanceof DOMException && err.name === 'NotFoundError') {
+          setCameraError('No camera device found. Interview continues in text/voice mode.');
+        } else if (err instanceof DOMException && err.name === 'NotReadableError') {
+          setCameraError('Camera is in use by another app. Interview continues in text/voice mode.');
+        } else {
+          setCameraError('Webcam unavailable. Interview continues in text/voice mode.');
+        }
       }
     }
 
     setupCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      isCancelled = true;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!hasCameraPermission || !stream || !video) {
+      return;
+    }
+
+    let isEffectActive = true;
+    video.srcObject = stream;
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        if (!isEffectActive) {
+          return;
+        }
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          return;
+        }
+        console.warn('Camera video playback failed:', err);
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+        setStream(null);
+        setHasCameraPermission(false);
+        setCameraError('Unable to display camera preview. Interview continues in text/voice mode.');
+      });
+    }
+
+    return () => {
+      isEffectActive = false;
+      video.srcObject = null;
+    };
+  }, [stream, hasCameraPermission]);
 
   const formatTimer = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
