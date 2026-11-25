@@ -1,0 +1,1 @@
+"""PrepAI backend application package."""
